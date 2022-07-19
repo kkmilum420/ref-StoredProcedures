@@ -1,0 +1,9 @@
+#Tue Jul 19 14:26:15 IST 2022
+generateSchema=false
+ConnectionName=D20H
+useridCurrentSchema=false
+currentPath=SYSIBM,SYSFUN,SYSPROC,V0V542D
+currentSchema=V0V542D
+buildOwner=V0V542D
+packageOwner=V0V542D
+ProjectAnnotation=D20H\:jdbc\:db2\://SD01.IT.VOLVO.COM\:446/SEVOL0D2D20H00\:retrieveMessagesFromServerOnGetMessage\=true;

@@ -1,0 +1,358 @@
+CREATE PROCEDURE REF_TEST
+                        (                          
+                          IN ORDER_NO INTEGER
+                         ,IN BUSAREA CHAR(10)
+                         ,IN MODEL_ID CHAR(20)          
+                         ,IN ORDER_TYPE CHAR(20)        
+                         ,IN CHASSIS_NO CHAR(10)        
+                         ,IN VIN CHAR(20)               
+                         ,IN REQ_DELIVERY_DATE CHAR(10)     
+                         ,IN DELIVERY_LOCATION CHAR(20) 
+                         ,IN ACT_DELIVERY_DATE CHAR(10)     
+                         ,IN STATUS CHAR(15)            
+                         ,IN REQUESTED_BY CHAR(20)      
+                         ,IN LAST_ORDER_NO INTEGER     
+                         ,OUT RETURN_CODE CHAR(4)       
+                         ,OUT REASON_CODE CHAR(100)     
+                         )
+VERSION V1
+                                     ISOLATION LEVEL CS
+                 RESULT SETS 1
+                 LANGUAGE SQL
+                
+    PACKAGE OWNER V0V542D
+
+ P1: BEGIN 
+--  CHANGE HISTORY
+--  14/06/2022    Initial Version
+    
+    DECLARE STMT                VARCHAR(9000);                     
+    DECLARE PRMCNT              NUMERIC(2) DEFAULT 0;              
+    DECLARE SQLCODE             INTEGER DEFAULT 0; 
+    DECLARE V_SQLCODE           INTEGER DEFAULT 0; 
+    DECLARE SQLSTATE            CHAR(05) DEFAULT '00000';                
+    DECLARE PROCEED             CHAR(1) DEFAULT 'Y';               
+                                                           
+    DECLARE PARAM1              VARCHAR(100) DEFAULT ' ';          
+    DECLARE PARAM2              VARCHAR(100) DEFAULT ' ';          
+    DECLARE PARAM3              VARCHAR(100) DEFAULT ' ';          
+    DECLARE PARAM4              VARCHAR(100) DEFAULT ' ';          
+    DECLARE PARAM5              VARCHAR(100) DEFAULT ' ';          
+    DECLARE PARAM6              VARCHAR(100) DEFAULT ' ';          
+    DECLARE PARAM7              VARCHAR(100) DEFAULT ' ';          
+    DECLARE PARAM8              VARCHAR(100) DEFAULT ' ';          
+    DECLARE PARAM9              VARCHAR(100) DEFAULT ' ';          
+    DECLARE PARAM10             VARCHAR(100) DEFAULT ' ';          
+    DECLARE PARAM11             VARCHAR(100) DEFAULT ' '; 
+    
+    DECLARE H_REQ_DELIVERY_DATE   DATE;
+    DECLARE H_ACT_DELIVERY_DATE   DATE;   
+    
+    DECLARE CONTINUE HANDLER FOR SQLEXCEPTION, SQLWARNING, NOT FOUND
+            SET V_SQLCODE = SQLCODE;
+       
+    
+    IF (ORDER_NO > 0 
+        OR BUSAREA > ' '
+        OR MODEL_ID > ' '
+        OR ORDER_TYPE > ' '
+        OR CHASSIS_NO > ' '
+        OR VIN > ' '
+        OR REQ_DELIVERY_DATE > '0001-01-01'
+        OR ACT_DELIVERY_DATE > '0001-01-01'
+        OR DELIVERY_LOCATION > ' '
+        OR STATUS > ' '
+        OR REQUESTED_BY > ' '
+        ) THEN
+        SET PROCEED = 'Y';
+    ELSE
+        SET PROCEED = 'N';
+        SET RETURN_CODE = '9000';
+        SET REASON_CODE = 'At least one input needs to be provided';
+        LEAVE P1;
+    END IF;    
+    
+--  SET SQL STATEMENT FOR DYNAMIC CURSOR FETCH
+    SET STMT = 'SELECT ORD.ORDER_NO, ORD.BUSAREA, ORD.MODEL_ID,         
+                       ORD.ORDER_TYPE, ORD.CHASSIS_NO, ORD.VIN,         
+                       ORD.REQ_DELIVERY_DATE, ORD.DELIVERY_LOCATION,    
+                       ORD.ORDER_QTY, COST.ORDER_TOTAL_COST, ORD.STATUS,
+                       ORD.ACT_DELIVERY_DATE, ORD.REQUESTED_BY,         
+                       ORD.UPDATED_BY, ORD.CREATION_TIMESTAMP,          
+                       ORD.UPDATE_TIMESTAMP                             
+                  FROM VEHICLE_ORDER ORD                                
+                      ,VEHICLE_ORDER_COST COST                          
+                 WHERE ORD.ORDER_NO = COST.ORDER_NO                     
+                   AND ORD.BUSAREA  = COST.BUSAREA                      
+                   AND ORD.MODEL_ID = COST.MODEL_ID                     
+                   AND ORD.ORDER_TYPE = COST.ORDER_TYPE';               
+
+-- SET WHERE CONDTIONS FOR ABOVE SQL STATEMET DEPENDING ON THE INPUT VALUES 
+     
+     IF (ORDER_NO > 0 AND LAST_ORDER_NO = 0 AND PROCEED = 'Y') THEN
+        SET STMT = CONCAT(STMT, ' AND ORD.ORDER_NO = CAST( ? AS INTEGER)');
+        SET PRMCNT = 0;
+        SET PARAM1 = ORDER_NO;
+        SET STMT = CONCAT(STMT, ' ORDER BY ORD.ORDER_NO');
+     ELSE   
+         IF (LAST_ORDER_NO > 0 AND PROCEED = 'Y') THEN
+            SET STMT = CONCAT(STMT, ' AND ORD.ORDER_NO > CAST( ? AS INTEGER)');
+            SET PRMCNT = PRMCNT + 1;
+            SET PARAM1 = LAST_ORDER_NO;    
+         END IF;
+         
+         IF (BUSAREA > ' ' AND PROCEED = 'Y') THEN
+            SET STMT = CONCAT(STMT, ' AND ORD.BUSAREA = CAST( ? AS CHAR(10))');
+            SET PRMCNT = PRMCNT + 1;
+            IF (PARAM1 = ' ') THEN
+                SET PARAM1 = BUSAREA;
+            ELSE
+                SET PARAM2 = BUSAREA;
+            END IF;        
+         END IF;
+     
+         IF (MODEL_ID > ' ' AND PROCEED = 'Y') THEN
+            SET STMT = CONCAT(STMT, ' AND ORD.MODEL_ID = CAST( ? AS CHAR(20))');
+            SET PRMCNT = PRMCNT + 1;
+            IF (PARAM1 = ' ') THEN
+                SET PARAM1 = MODEL_ID;
+            ELSEIF (PARAM2 = ' ') THEN
+                SET PARAM2 = MODEL_ID;
+            ELSE
+                SET PARAM3 = MODEL_ID;
+            END IF;        
+         END IF;
+     
+         IF (ORDER_TYPE > ' ' AND PROCEED = 'Y') THEN
+            SET STMT = CONCAT(STMT, ' AND ORD.ORDER_TYPE = CAST( ? AS CHAR(20))');
+            SET PRMCNT = PRMCNT + 1;
+            IF (PARAM1 = ' ') THEN
+                SET PARAM1 = ORDER_TYPE;
+            ELSEIF (PARAM2 = ' ') THEN
+                SET PARAM2 = ORDER_TYPE;
+            ELSEIF (PARAM3 = ' ') THEN
+                SET PARAM3 = ORDER_TYPE;
+            ELSE
+                SET PARAM4 = ORDER_TYPE;
+            END IF;        
+         END IF;
+         
+         IF (CHASSIS_NO > ' ' AND PROCEED = 'Y') THEN
+            SET STMT = CONCAT(STMT, ' AND ORD.CHASSIS_NO = CAST( ? AS CHAR(10))');
+            SET PRMCNT = PRMCNT + 1;
+            IF (PARAM1 = ' ') THEN
+                SET PARAM1 = CHASSIS_NO;
+            ELSEIF (PARAM2 = ' ') THEN
+                SET PARAM2 = CHASSIS_NO;
+            ELSEIF (PARAM3 = ' ') THEN
+                SET PARAM3 = CHASSIS_NO;
+            ELSEIF (PARAM4 = ' ') THEN
+                SET PARAM4 = CHASSIS_NO;
+            ELSE
+                SET PARAM5 = CHASSIS_NO;    
+            END IF;        
+         END IF;
+         
+         IF (VIN > ' ' AND PROCEED = 'Y') THEN
+            SET STMT = CONCAT(STMT, ' AND ORD.VIN = CAST( ? AS CHAR(20))');
+            SET PRMCNT = PRMCNT + 1;
+            IF (PARAM1 = ' ') THEN
+                SET PARAM1 = VIN;
+            ELSEIF (PARAM2 = ' ') THEN
+                SET PARAM2 = VIN;
+            ELSEIF (PARAM3 = ' ') THEN
+                SET PARAM3 = VIN;
+            ELSEIF (PARAM4 = ' ') THEN
+                SET PARAM4 = VIN;
+            ELSEIF (PARAM5 = ' ') THEN
+                SET PARAM5 = VIN;
+            ELSE
+                SET PARAM6 = VIN;        
+            END IF;        
+         END IF;
+         
+         IF (REQ_DELIVERY_DATE > '0001-01-01' AND PROCEED = 'Y') THEN
+            SET V_SQLCODE = 0;
+            SELECT DATE(REQ_DELIVERY_DATE)
+              INTO H_REQ_DELIVERY_DATE
+              FROM SYSIBM.SYSDUMMY1;
+            IF (V_SQLCODE = 0) THEN   
+                SET STMT = CONCAT(STMT, ' AND ORD.REQ_DELIVERY_DATE = CAST( ? AS DATE)');
+                SET PRMCNT = PRMCNT + 1;
+                IF (PARAM1 = ' ') THEN
+                    SET PARAM1 = H_REQ_DELIVERY_DATE;
+                ELSEIF (PARAM2 = ' ') THEN
+                    SET PARAM2 = H_REQ_DELIVERY_DATE;
+                ELSEIF (PARAM3 = ' ') THEN
+                    SET PARAM3 = H_REQ_DELIVERY_DATE;
+                ELSEIF (PARAM4 = ' ') THEN
+                    SET PARAM4 = H_REQ_DELIVERY_DATE;
+                ELSEIF (PARAM5 = ' ') THEN
+                    SET PARAM5 = H_REQ_DELIVERY_DATE;
+                ELSE
+                    SET PARAM6 = H_REQ_DELIVERY_DATE;        
+                END IF;
+            ELSEIF (V_SQLCODE = -181) THEN
+               SET PROCEED = 'N';
+               SET RETURN_CODE = '9181';
+               SET REASON_CODE = 'Requested Delivery Date is not in YYYY-MM-DD or MM/DD/YYYY format';
+            ELSE
+               SET PROCEED = 'N';
+               SET RETURN_CODE = '9999';
+               SET REASON_CODE = CONCAT('Requested Delivery Date validation failed with sqlcode:',CHAR(V_SQLCODE)); 
+            END IF;        
+         END IF;
+         
+         IF (DELIVERY_LOCATION > ' ' AND PROCEED = 'Y') THEN   
+            SET STMT = CONCAT(STMT, ' AND ORD.DELIVERY_LOCATION = CAST( ? AS CHAR(20))');
+            SET PRMCNT = PRMCNT + 1;
+            IF (PARAM1 = ' ') THEN
+                SET PARAM1 = DELIVERY_LOCATION;
+            ELSEIF (PARAM2 = ' ') THEN
+                SET PARAM2 = DELIVERY_LOCATION;
+            ELSEIF (PARAM3 = ' ') THEN
+                SET PARAM3 = DELIVERY_LOCATION;
+            ELSEIF (PARAM4 = ' ') THEN
+                SET PARAM4 = DELIVERY_LOCATION;
+            ELSEIF (PARAM5 = ' ') THEN
+                SET PARAM5 = DELIVERY_LOCATION;
+            ELSEIF (PARAM6 = ' ') THEN
+                SET PARAM6 = DELIVERY_LOCATION; 
+            ELSE
+                SET PARAM7 = DELIVERY_LOCATION;           
+            END IF;       
+         END IF;
+         
+         IF (ACT_DELIVERY_DATE > ' ' AND PROCEED = 'Y') THEN
+            SET V_SQLCODE = 0;
+            SELECT DATE(ACT_DELIVERY_DATE)
+              INTO H_ACT_DELIVERY_DATE
+              FROM SYSIBM.SYSDUMMY1;
+            
+            IF (V_SQLCODE = 0) THEN
+                SET STMT = CONCAT(STMT, ' AND ORD.ACT_DELIVERY_DATE = CAST( ? AS DATE)');
+                SET PRMCNT = PRMCNT + 1;
+                IF (PARAM1 = ' ') THEN
+                    SET PARAM1 = H_ACT_DELIVERY_DATE;
+                ELSEIF (PARAM2 = ' ') THEN
+                    SET PARAM2 = H_ACT_DELIVERY_DATE;
+                ELSEIF (PARAM3 = ' ') THEN
+                    SET PARAM3 = H_ACT_DELIVERY_DATE;
+                ELSEIF (PARAM4 = ' ') THEN
+                    SET PARAM4 = H_ACT_DELIVERY_DATE;
+                ELSEIF (PARAM5 = ' ') THEN
+                    SET PARAM5 = H_ACT_DELIVERY_DATE;
+                ELSEIF (PARAM6 = ' ') THEN
+                    SET PARAM6 = H_ACT_DELIVERY_DATE; 
+                ELSEIF (PARAM7 = ' ') THEN
+                    SET PARAM7 = H_ACT_DELIVERY_DATE;
+                ELSE
+                    SET PARAM8 = H_ACT_DELIVERY_DATE;            
+                END IF;
+           ELSEIF (V_SQLCODE = -181) THEN
+                SET PROCEED = 'N';
+                SET RETURN_CODE = '9181';
+                SET REASON_CODE = 'Actual Delivery Date is not in YYYY-MM-DD or MM/DD/YYYY format:';
+           ELSE
+               SET PROCEED = 'N'; 
+               SET RETURN_CODE = '9999';
+               SET REASON_CODE = CONCAT('Actual Delivery Date validation failed with sqlcode:',CHAR(V_SQLCODE));  
+           END IF;       
+         END IF;
+         
+         IF (STATUS > ' ' AND PROCEED = 'Y') THEN
+            SET STMT = CONCAT(STMT, ' AND ORD.STATUS = CAST( ? AS CHAR(15))');
+            SET PRMCNT = PRMCNT + 1;
+            IF (PARAM1 = ' ') THEN
+                SET PARAM1 = STATUS;
+            ELSEIF (PARAM2 = ' ') THEN
+                SET PARAM2 = STATUS;
+            ELSEIF (PARAM3 = ' ') THEN
+                SET PARAM3 = STATUS;
+            ELSEIF (PARAM4 = ' ') THEN
+                SET PARAM4 = STATUS;
+            ELSEIF (PARAM5 = ' ') THEN
+                SET PARAM5 = STATUS;
+            ELSEIF (PARAM6 = ' ') THEN
+                SET PARAM6 = STATUS; 
+            ELSEIF (PARAM7 = ' ') THEN
+                SET PARAM7 = STATUS;
+            ELSEIF (PARAM8 = ' ') THEN
+                SET PARAM8 = STATUS;  
+            ELSE
+                SET PARAM9 = STATUS;          
+            END IF;        
+         END IF;
+         
+         IF (REQUESTED_BY > ' ' AND PROCEED = 'Y') THEN
+            SET STMT = CONCAT(STMT, ' AND ORD.REQUESTED_BY = CAST( ? AS CHAR(20))');
+            SET PRMCNT = PRMCNT + 1;
+            IF (PARAM1 = ' ') THEN
+                SET PARAM1 = REQUESTED_BY;
+            ELSEIF (PARAM2 = ' ') THEN
+                SET PARAM2 = REQUESTED_BY;
+            ELSEIF (PARAM3 = ' ') THEN
+                SET PARAM3 = REQUESTED_BY;
+            ELSEIF (PARAM4 = ' ') THEN
+                SET PARAM4 = REQUESTED_BY;
+            ELSEIF (PARAM5 = ' ') THEN
+                SET PARAM5 = REQUESTED_BY;
+            ELSEIF (PARAM6 = ' ') THEN
+                SET PARAM6 = REQUESTED_BY; 
+            ELSEIF (PARAM7 = ' ') THEN
+                SET PARAM7 = REQUESTED_BY;
+            ELSEIF (PARAM8 = ' ') THEN
+                SET PARAM8 = REQUESTED_BY;  
+            ELSEIF (PARAM9 = ' ') THEN
+                SET PARAM9 = REQUESTED_BY;
+            ELSE
+                SET PARAM10 = REQUESTED_BY;          
+            END IF;        
+         END IF;
+
+-- Add Order by clause
+        SET STMT = CONCAT(STMT, 'ORDER BY ORD.ORDER_NO');     
+     END IF;
+          
+     IF (PROCEED = 'Y') THEN
+        PREPARE SQLSTMT FROM STMT;
+--        
+        GET_RESPONSE: BEGIN
+            DECLARE GETORD CURSOR WITH RETURN TO CALLER FOR SQLSTMT;
+            
+            SET V_SQLCODE = 0;
+            IF (PRMCNT = 0) THEN
+               OPEN GETORD USING PARAM1;
+            ELSEIF (PRMCNT = 1) THEN
+               OPEN GETORD USING PARAM1;
+            ELSEIF (PRMCNT = 2) THEN 
+               OPEN GETORD USING PARAM1, PARAM2;
+            ELSEIF (PRMCNT = 3) THEN 
+               OPEN GETORD USING PARAM1, PARAM2, PARAM3;
+            ELSEIF (PRMCNT = 4) THEN 
+               OPEN GETORD USING PARAM1, PARAM2, PARAM3, PARAM4;
+            ELSEIF (PRMCNT = 5) THEN 
+               OPEN GETORD USING PARAM1, PARAM2, PARAM3, PARAM4, PARAM5;
+            ELSEIF (PRMCNT = 6) THEN 
+               OPEN GETORD USING PARAM1, PARAM2, PARAM3, PARAM4, PARAM5, PARAM6;
+            ELSEIF (PRMCNT = 7) THEN 
+               OPEN GETORD USING PARAM1, PARAM2, PARAM3, PARAM4, PARAM5, PARAM6, PARAM7;
+            ELSEIF (PRMCNT = 8) THEN 
+               OPEN GETORD USING PARAM1, PARAM2, PARAM3, PARAM4, PARAM5, PARAM6, PARAM7, PARAM8;
+            ELSEIF (PRMCNT = 9) THEN 
+               OPEN GETORD USING PARAM1, PARAM2, PARAM3, PARAM4, PARAM5, PARAM6, PARAM7, PARAM8, PARAM9;
+            ELSEIF (PRMCNT = 10) THEN 
+               OPEN GETORD USING PARAM1, PARAM2, PARAM3, PARAM4, PARAM5, PARAM6, PARAM7, PARAM8, PARAM9, PARAM10;
+            END IF;  
+            
+            IF (V_SQLCODE <> 0) THEN
+               SET RETURN_CODE = '9999';
+               SET REASON_CODE = CONCAT('Db2 issue and sqlcode is ',CHAR(V_SQLCODE));
+            ELSE
+               SET RETURN_CODE = '0';
+               SET REASON_CODE = 'Search Process completed successfully';      
+            END IF;  
+            
+        END GET_RESPONSE;
+     END IF;                                                   
+ END P1
