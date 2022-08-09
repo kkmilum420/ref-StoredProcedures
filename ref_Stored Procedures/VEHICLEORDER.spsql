@@ -1,5 +1,5 @@
 CREATE PROCEDURE VEHICLEORDER
-                            (
+                             (
                              IN REQUEST_TYPE CHAR(02)
                             ,IN ORDER_NO INTEGER
                             ,IN BUSAREA CHAR(10)
