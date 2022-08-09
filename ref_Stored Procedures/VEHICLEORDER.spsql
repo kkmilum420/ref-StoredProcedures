@@ -1,0 +1,215 @@
+CREATE PROCEDURE VEHICLEORDER
+                            (
+                             IN REQUEST_TYPE CHAR(02)
+                            ,IN ORDER_NO INTEGER
+                            ,IN BUSAREA CHAR(10)
+                            ,IN MODEL_ID CHAR(20)
+                            ,IN ORDER_TYPE CHAR(20)
+                            ,IN CHASSIS_NO CHAR(10)
+                            ,IN VIN CHAR(20)
+                            ,IN ORDER_QTY INTEGER
+                            ,IN ORDER_COST DECIMAL(11,2)
+                            ,IN REQ_DELIVERY_DATE CHAR(10)
+                            ,IN DELIVERY_LOCATION CHAR(20)
+                            ,IN ACT_DELIVERY_DATE CHAR(10)
+                            ,IN STATUS CHAR(15)
+                            ,IN REQUESTED_BY CHAR(20)
+                            ,IN START_AFT_ORDER_NO INTEGER
+                            ,OUT NEW_ORDER_NO INTEGER
+                            ,OUT RESPONSE_CODE CHAR(4)
+                            ,OUT RESPONSE_REASON CHAR(100)
+                            ,OUT DEBUGTXT VARCHAR(1000)
+                            )
+VERSION V1                                      ISOLATION LEVEL CS
+                RESULT SETS 1
+                LANGUAGE SQL
+    PACKAGE OWNER V0V542D
+
+P1: BEGIN
+    --  CHANGE HISTORY
+--  14/06/2022    Initial Version
+    
+    DECLARE SQLCODE                 INTEGER DEFAULT 0;
+    DECLARE SQLSTATE                CHAR(5) DEFAULT '00000';
+    DECLARE V_SQLCODE               INTEGER DEFAULT 0;
+    DECLARE V_SQLSTATE              CHAR(5) DEFAULT '00000';
+    
+    DECLARE RD_RETURN_CODE          CHAR(04) DEFAULT ' ';
+    DECLARE RD_REASON_CODE          CHAR(100) DEFAULT ' ';
+    DECLARE SI_RETURN_CODE          CHAR(04) DEFAULT ' ';
+    DECLARE SI_REASON_CODE          CHAR(100) DEFAULT ' ';
+    DECLARE UP_RETURN_CODE          CHAR(04) DEFAULT ' ';
+    DECLARE UP_REASON_CODE          CHAR(100) DEFAULT ' ';
+    DECLARE DE_RETURN_CODE          CHAR(04) DEFAULT ' ';
+    DECLARE DE_REASON_CODE          CHAR(100) DEFAULT ' ';
+    
+    DECLARE VEHORD_SRCH RESULT_SET_LOCATOR VARYING; 
+    
+    DECLARE RD_ORDER_NO             INTEGER;
+    DECLARE RD_BUSAREA              CHAR(10);
+    DECLARE RD_MODEL_ID             CHAR(20);
+    DECLARE RD_ORDER_TYPE           CHAR(20);
+    DECLARE RD_CHASSIS_NO           CHAR(10);
+    DECLARE RD_VIN                  CHAR(20);
+    DECLARE RD_REQ_DELIVERY_DATE    DATE;
+    DECLARE RD_DELIVERY_LOCATION    CHAR(20);
+    DECLARE RD_ORDER_QTY            INTEGER;
+    DECLARE RD_ORDER_COST           DECIMAL(11,2);
+    DECLARE RD_STATUS               CHAR(15);
+    DECLARE RD_ACT_DELIVERY_DATE    DATE;
+    DECLARE RD_REQUESTED_BY         CHAR(20);
+    DECLARE RD_UPDATED_BY           CHAR(20);
+    DECLARE RD_CREATION_TIMESTAMP   TIMESTAMP;
+    DECLARE RD_UPDATE_TIMESTAMP     TIMESTAMP;
+    
+    DECLARE RESLT_SET_REC_CNT       SMALLINT DEFAULT 0;
+    
+    DECLARE CONTINUE HANDLER FOR SQLEXCEPTION, SQLWARNING, NOT FOUND
+            SET V_SQLCODE = SQLCODE;
+           
+    
+    SET CURRENT SQLID = 'V0V542D';
+    CASE (REQUEST_TYPE) 
+         WHEN 'RD' THEN
+             
+             CALL VEHICLEORDER_SEARCH(ORDER_NO, BUSAREA, MODEL_ID, ORDER_TYPE,  
+                                      CHASSIS_NO, VIN, REQ_DELIVERY_DATE,
+                                      DELIVERY_LOCATION, ACT_DELIVERY_DATE,
+                                      STATUS, REQUESTED_BY, 
+                                      START_AFT_ORDER_NO, RD_RETURN_CODE, 
+                                      RD_REASON_CODE);
+             
+             IF (RD_RETURN_CODE = 0) THEN
+                DECLARE GLOBAL TEMPORARY TABLE SESSION.ORDER_SEARCH(
+                                            ORDER_NO INTEGER,
+                                            BUSAREA  CHAR(10),
+                                            MODEL_ID CHAR(20),
+                                            ORDER_TYPE CHAR(20),
+                                            CHASSIS_NO CHAR(10),
+                                            VIN CHAR(20),
+                                            REQ_DELIVERY_DATE DATE,
+                                            DELIVERY_LOCATION CHAR(20),
+                                            ORDER_QTY INTEGER,
+                                            ORDER_COST DECIMAL(11,2),
+                                            STATUS CHAR(15),
+                                            ACT_DELIVERY_DATE DATE,
+                                            REQUESTED_BY CHAR(20),
+                                            UPDATED_BY CHAR(20),
+                                            CREATION_TIMESTAMP TIMESTAMP,
+                                            UPDATE_TIMESTAMP TIMESTAMP
+                                            )
+                     ON COMMIT DROP TABLE;
+                        
+                ASSOCIATE RESULT SET LOCATOR(VEHORD_SRCH) 
+                      WITH PROCEDURE VEHICLEORDER_SEARCH
+                      ;
+                
+                ALLOCATE VEHORD_CUR CURSOR FOR RESULT SET VEHORD_SRCH;
+                
+                SET V_SQLCODE = 0;
+                GET_RESULT: LOOP
+                    FETCH VEHORD_CUR
+                     INTO RD_ORDER_NO
+                         ,RD_BUSAREA
+                         ,RD_MODEL_ID
+                         ,RD_ORDER_TYPE
+                         ,RD_CHASSIS_NO
+                         ,RD_VIN
+                         ,RD_REQ_DELIVERY_DATE
+                         ,RD_DELIVERY_LOCATION
+                         ,RD_ORDER_QTY
+                         ,RD_ORDER_COST
+                         ,RD_STATUS
+                         ,RD_ACT_DELIVERY_DATE
+                         ,RD_REQUESTED_BY
+                         ,RD_UPDATED_BY
+                         ,RD_CREATION_TIMESTAMP
+                         ,RD_UPDATE_TIMESTAMP;
+                                        
+                    IF (V_SQLCODE <> 0) THEN
+                       LEAVE GET_RESULT;
+                    END IF;
+                    
+                    SET RESLT_SET_REC_CNT = RESLT_SET_REC_CNT + 1;
+                    
+                    INSERT INTO SESSION.ORDER_SEARCH
+                         VALUES  (RD_ORDER_NO
+                                 ,RD_BUSAREA
+                                 ,RD_MODEL_ID
+                                 ,RD_ORDER_TYPE
+                                 ,RD_CHASSIS_NO
+                                 ,RD_VIN
+                                 ,RD_REQ_DELIVERY_DATE
+                                 ,RD_DELIVERY_LOCATION
+                                 ,RD_ORDER_QTY
+                                     ,RD_ORDER_COST
+                                 ,RD_STATUS
+                                 ,RD_ACT_DELIVERY_DATE
+                                 ,RD_REQUESTED_BY
+                                 ,RD_UPDATED_BY
+                                 ,RD_CREATION_TIMESTAMP
+                                 ,RD_UPDATE_TIMESTAMP
+                                 );
+                END LOOP GET_RESULT;
+                CLOSE VEHORD_CUR;
+                
+                IF (RESLT_SET_REC_CNT = 0) THEN
+                    SET RD_RETURN_CODE = '9100';
+                    SET RD_REASON_CODE = 'No Orders found for search criteria';
+                    LEAVE P1;
+                END IF;
+                
+                SEND_RESULT_SET: BEGIN
+                    DECLARE RESULT_SET CURSOR 
+                            WITH RETURN TO CALLER
+                            FOR
+                            SELECT   OS.ORDER_NO           AS "order_no"
+                                    ,OS.BUSAREA            AS "busarea"
+                                    ,OS.MODEL_ID           AS "model_id"
+                                    ,OS.ORDER_TYPE         AS "order_type"
+                                    ,OS.CHASSIS_NO         AS "chassis_no"
+                                    ,OS.VIN                AS "vin"
+                                    ,OS.REQ_DELIVERY_DATE  AS "req_delivery_date"
+                                    ,OS.DELIVERY_LOCATION  AS "delivery_location"
+                                    ,OS.ORDER_QTY          AS "order_qty"
+                                    ,OS.ORDER_COST         AS "order_cost"
+                                    ,OS.STATUS             AS "status"
+                                    ,OS.ACT_DELIVERY_DATE  AS "act_delivery_date"
+                                    ,OS.REQUESTED_BY       AS "requested_by"
+                                    ,OS.UPDATED_BY         AS "updated_by"
+                                    ,OS.CREATION_TIMESTAMP AS "creation_timestamp"
+                                    ,OS.UPDATE_TIMESTAMP   AS "update_timestamp"  
+                            FROM SESSION.ORDER_SEARCH OS;
+                    OPEN RESULT_SET;
+                END SEND_RESULT_SET;     
+                
+             END IF; 
+             SET RESPONSE_CODE = RD_RETURN_CODE;
+             SET RESPONSE_REASON = RD_REASON_CODE;
+         WHEN 'SI' THEN
+             SET RESPONSE_CODE = ' ';
+             SET RESPONSE_REASON = ' ';
+             SET NEW_ORDER_NO = 0;
+             CALL VEHICLEORDER_CREATE(BUSAREA, MODEL_ID, ORDER_TYPE,  
+                                      CHASSIS_NO, VIN, ORDER_QTY, ORDER_COST,
+                                      REQ_DELIVERY_DATE, DELIVERY_LOCATION, 
+                                      ACT_DELIVERY_DATE, STATUS, REQUESTED_BY,  
+                                      NEW_ORDER_NO,
+                                      SI_RETURN_CODE, SI_REASON_CODE); 
+             SET RESPONSE_CODE = SI_RETURN_CODE;
+             SET RESPONSE_REASON = SI_REASON_CODE;
+         WHEN 'UP' THEN
+             CALL VEHICLEORDER_CHANGE(ORDER_NO, BUSAREA, MODEL_ID, ORDER_TYPE,  
+                                      CHASSIS_NO, VIN, ORDER_QTY, ORDER_COST, 
+                                      ACT_DELIVERY_DATE, STATUS, 
+                                      UP_RETURN_CODE, UP_REASON_CODE);
+             SET RESPONSE_CODE = UP_RETURN_CODE;
+             SET RESPONSE_REASON = UP_REASON_CODE;
+         WHEN 'DE' THEN
+             CALL VEHICLEORDER_CANCEL(ORDER_NO, BUSAREA, MODEL_ID, ORDER_TYPE,  
+                                      CHASSIS_NO, VIN, 
+                                      DE_RETURN_CODE, DE_REASON_CODE);
+             SET RESPONSE_CODE = DE_RETURN_CODE;
+             SET RESPONSE_REASON = DE_REASON_CODE;
+    END CASE;       
+END P1
